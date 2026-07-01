@@ -52,34 +52,27 @@ export function playFlipSound() {
   }
   const noise = audioCtx.createBufferSource();
   noise.buffer = noiseBuffer;
+  const lowpass = audioCtx.createBiquadFilter();
+  lowpass.type = 'lowpass';
+  lowpass.frequency.value = 1000;
   const highpass = audioCtx.createBiquadFilter();
   highpass.type = 'highpass';
-  highpass.frequency.value = 3000;
+  highpass.frequency.value = 100;
   const bandpass = audioCtx.createBiquadFilter();
   bandpass.type = 'bandpass';
-  bandpass.frequency.value = 6000;
-  bandpass.Q.value = 2;
+  bandpass.frequency.value = 500;
+  bandpass.Q.value = 0.7;
   const gain = audioCtx.createGain();
   gain.gain.setValueAtTime(0, now);
-  gain.gain.linearRampToValueAtTime(0.5, now + 0.005);
-  gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+    gain.gain.linearRampToValueAtTime(0.08, now + 0.005);
+  gain.gain.exponentialRampToValueAtTime(0.01, now + 0.06);
   noise.connect(highpass);
   highpass.connect(bandpass);
-  bandpass.connect(gain);
+  bandpass.connect(lowpass);
+  lowpass.connect(gain);
   gain.connect(audioCtx.destination);
   noise.start(now);
-  noise.stop(now + 0.1);
-  const click = audioCtx.createOscillator();
-  const clickGain = audioCtx.createGain();
-  click.type = 'square';
-  click.frequency.setValueAtTime(4000, now);
-  click.frequency.exponentialRampToValueAtTime(2000, now + 0.01);
-  clickGain.gain.setValueAtTime(0.25, now);
-  clickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.015);
-  click.connect(clickGain);
-  clickGain.connect(audioCtx.destination);
-  click.start(now);
-  click.stop(now + 0.02);
+  noise.stop(now + 0.07);
 }
 
 export function updateFlipUnit(flipUnit, oldValue, newValue) {
@@ -99,6 +92,8 @@ export function updateFlipUnit(flipUnit, oldValue, newValue) {
   function onAnimationEnd() {
     upperCard.removeEventListener('animationend', onAnimationEnd);
 
+    playFlipSound();
+
     upperCard.querySelector('.card-flip-front .digit').textContent = newValue;
     upperCard.classList.remove('flipping', 'upper');
     upperCard.classList.add('lower');
@@ -114,7 +109,6 @@ export function updateFlipUnit(flipUnit, oldValue, newValue) {
 
   upperCard.addEventListener('animationend', onAnimationEnd);
 
-  playFlipSound();
   flipUnit.dataset.value = String(newValue);
 }
 

@@ -13,7 +13,7 @@ All source files live in the `flip clock/` directory:
 ```
 flip clock/
 ├── clock.js          # App logic (module)
-├── clock.test.js     # Vitest test suite (108 tests)
+├── clock.test.js     # Vitest test suite (110 tests)
 ├── index.html        # Entry HTML (imports clock.js as module)
 ├── style.css         # All styles + media queries
 ├── favicon.svg       # Dark clock SVG favicon
@@ -24,7 +24,7 @@ flip clock/
 ```
 
 - `npm run dev` — starts Vite dev server with HMR
-- `npm test` — runs all 108 Vitest tests
+- `npm test` — runs all 110 Vitest tests
 - `npm run build` — production build (Vite)
 - `npm run preview` — preview production build
 
@@ -133,19 +133,19 @@ No textContent on the upper's front face is changed — it keeps the old digit, 
 
 #### At `animationend`
 
-Three things happen:
+Four things happen in order:
 
-1. **Face updates** (all set to `newValue` before class swap):
+1. **Sound plays** — `playFlipSound()` fires (upper card hits lower card)
+2. **Face updates** (all set to `newValue` before class swap):
    - New Lower's front face → new digit (visible after snap to `rotateX(0deg)`)
    - New Upper's back face → new digit (hidden, ready for next flip's back-face preparation)
    - New Pre-upper's front face → new digit (hidden, ready for next flip's front-face preparation)
-
-2. **Class swap** (three-way rotation):
+3. **Class swap** (three-way rotation):
    - `.flipping.upper` → `.lower` (the card that just finished flipping)
    - `.pre-upper` → `.upper` (was hidden behind, now at top)
    - `.lower` → `.pre-upper` (was at bottom, now hidden behind)
 
-3. **dataset.value** updated, **sound** played
+Note: `dataset.value` is set at **flip start** (alongside adding the `.flipping` class), not at `animationend`.
 
 ### Role cycle across three flips
 
@@ -190,7 +190,8 @@ The cycle repeats every 3 flips.
 
 ### Sound
 
-- Flip sound is a short noise burst (0.1s white noise with highpass/bandpass filters) combined with a 4kHz square wave click
+- Flip sound is a short noise burst (0.07s white noise with highpass at 100Hz, bandpass at 500Hz Q0.7, and lowpass at 1kHz, peak gain 0.08) — no click oscillator, meant to evoke a playing card falling on another
+- Sound plays at `animationend` (when the upper card finishes flipping and contacts the lower card), not at flip start
 - AudioContext is initialized on first user interaction (click or keydown)
 - Uses `window.AudioContext` with `window.webkitAudioContext` fallback
 - Graceful no-op if AudioContext is unavailable
@@ -203,7 +204,8 @@ The cycle repeats every 3 flips.
    - **Upper back face** → new digit (upside-down, will become visible as bottom portion after flip)
    - **Pre-upper front face** → new digit (will be revealed as top portion when upper flips away)
 4. The **upper front face is never updated at flip start** — it keeps the old digit. The user sees the old digit during the first 90° of the flip, and it disappears naturally as the card rotates.
-5. At `animationend`, **three face updates** occur before the class swap:
+5. At `animationend`, **sound plays** followed by **three face updates** then the class swap:
+   - `playFlipSound()` fires first (upper card hits lower card)
    - The new Lower's front face → new digit (visible after snap from -180° to `rotateX(0deg)`)
    - The new Upper's back face → new digit (hidden, will be overwritten at next flip start)
    - The new Pre-upper's front face → new digit (hidden, will be overwritten at next flip start)
@@ -256,20 +258,19 @@ The cycle repeats every 3 flips.
 ### Framework
 - Vitest (ES module `clock.js` tested as ES module)
 
-### Test suite structure (108 tests)
+### Test suite structure (110 tests)
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
 | `getFormattedTime` | 22 | Digit values, AM/PM transitions, 12-hour format, padding, rollovers (59→00, 12→1), defaults |
 | `getFormattedDate` | 5 | String format, specific dates, leading day padding, defaults |
 | `getNextDigit` | 10 | All digit transitions 0→1 through 9→0 |
-| `updateFlipUnit` | 22 | Pre-upper front update, upper front preservation, upper back update, `.flipping` class, three-class coexistence, dataset update, no-op for same value, early return during flip, 9→0 rollover, empty dataset, animationend class swaps (all three cards), face values after animationend (all six faces), second flip, independent units, pre-empting, 3-flip full cycle with face validity |
-| `initAudio` / `playFlipSound` | 7 | AudioContext creation, deduplication, webkit fallback, missing AudioContext, full node creation, no-throw guarantees |
+| `updateFlipUnit` | 24 | Pre-upper front update, upper front preservation, upper back update, `.flipping` class, three-class coexistence, dataset update, no-op for same value, early return during flip, 9→0 rollover, empty dataset, animationend class swaps (all three cards), face values after animationend (all six faces), second flip, independent units, pre-empting, 3-flip full cycle with face validity |
+| `initAudio` / `playFlipSound` | 9 | AudioContext creation, deduplication, webkit fallback, missing AudioContext, buffer/node creation (no oscillator), filter frequency verification (lowpass 1kHz, highpass 100Hz, bandpass 500Hz Q0.7), sound plays at animationend (not at flip start), no-throw guarantees |
 | `initClock` | 6 | All faces set, no flip on init, class counts (one each of upper/pre-upper/lower), AM/PM, date, all 6 units |
 | `updateClock` | 5 | Time update, AM/PM update, flip trigger on change, no flip on same time, all digit positions |
-| `digit vertical alignment` | 17 | Per-breakpoint offset and center math (5 breakpoints), symmetry, calc() equivalence, CSS rule audit, DOM integration, bounds sanity (offset < cardH, offset + fontSize > cardH, offset + fontSize > h/2 + 1), hinge gap < font-size at every breakpoint |
+| `digit vertical alignment` | 18 | Per-breakpoint offset and center math (5 breakpoints × 2), symmetry across hinge, calc() equivalence, CSS rule audit, DOM integration, bounds sanity (offset < cardH, offset + fontSize > cardH, offset + fontSize > h/2 + 1), hinge gap < font-size at every breakpoint |
 | `getClockWidth` | 2 | Width computation from DOM elements, fallback to `window.innerWidth` when elements missing |
 | `adjustScale` | 8 | No-op when viewport wider than content, scaled inline widths applied when narrower, style clearing on resize from narrow to wide, digit font-size scaling, 50px-padding scale target verification (100px total margin), stability across repeated calls, graceful no-op when elements missing |
 | `setupClock` | 1 | Function existence (smoke test) |
-| `initAudio` / `playFlipSound` | 3 | (additional) webkit fallback, missing AudioContext, full node creation |
-| **Total** | **108** | |
+| **Total** | **110** | |

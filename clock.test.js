@@ -709,7 +709,52 @@ describe('initAudio and playFlipSound', () => {
     expect(mockCtx.createBufferSource).toHaveBeenCalled();
     expect(mockCtx.createBiquadFilter).toHaveBeenCalled();
     expect(mockCtx.createGain).toHaveBeenCalled();
-    expect(mockCtx.createOscillator).toHaveBeenCalled();
+    expect(mockCtx.createOscillator).not.toHaveBeenCalled();
+  });
+
+  it('creates biquad filters with correct frequencies', async () => {
+    const { initAudio, playFlipSound } = await import('./clock.js');
+    const mockCtx = createMockAudioContext();
+    window.AudioContext = vi.fn(() => mockCtx);
+    initAudio();
+    playFlipSound();
+
+    const filters = mockCtx.createBiquadFilter.mock.results.map(r => r.value);
+
+    const lowpass = filters.find(f => f.type === 'lowpass');
+    expect(lowpass).toBeTruthy();
+    expect(lowpass.frequency.value).toBe(1000);
+
+    const highpass = filters.find(f => f.type === 'highpass');
+    expect(highpass).toBeTruthy();
+    expect(highpass.frequency.value).toBe(100);
+
+    const bandpass = filters.find(f => f.type === 'bandpass');
+    expect(bandpass).toBeTruthy();
+    expect(bandpass.frequency.value).toBe(500);
+    expect(bandpass.Q.value).toBe(0.7);
+  });
+
+  it('sound plays at animationend, not at flip start', async () => {
+    const { initAudio, updateFlipUnit } = await import('./clock.js');
+    const mockCtx = createMockAudioContext();
+    window.AudioContext = vi.fn(() => mockCtx);
+    initAudio();
+
+    const unit = createFlipUnit('5');
+    const callsBefore = mockCtx.createBufferSource.mock.calls.length;
+
+    updateFlipUnit(unit, '5', '6');
+
+    expect(mockCtx.createBufferSource).toHaveBeenCalledTimes(callsBefore);
+
+    const flippingCard = unit.querySelector('.card-flip.flipping');
+    flippingCard.dispatchEvent(new Event('animationend'));
+
+    expect(mockCtx.createBufferSource).toHaveBeenCalled();
+    expect(mockCtx.createBiquadFilter).toHaveBeenCalled();
+    expect(mockCtx.createGain).toHaveBeenCalled();
+    expect(mockCtx.createOscillator).not.toHaveBeenCalled();
   });
 
   it('does not throw when called without audio context', async () => {
