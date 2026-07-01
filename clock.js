@@ -244,3 +244,7 @@ export function setupClock() {
   window.addEventListener('resize', adjustScale);
   setInterval(() => updateClock(flipUnits, ampmEl), 1000);
 }
+
+if (document.querySelector('.clock')) {
+  setupClock();
+}

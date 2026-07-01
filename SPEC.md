@@ -13,7 +13,7 @@ All source files live in the `flip clock/` directory:
 ```
 flip clock/
 ├── clock.js          # App logic (module)
-├── clock.test.js     # Vitest test suite (110 tests)
+├── clock.test.js     # Vitest test suite (109 tests)
 ├── index.html        # Entry HTML (imports clock.js as module)
 ├── style.css         # All styles + media queries
 ├── favicon.svg       # Dark clock SVG favicon
@@ -24,7 +24,7 @@ flip clock/
 ```
 
 - `npm run dev` — starts Vite dev server with HMR
-- `npm test` — runs all 110 Vitest tests
+- `npm test` — runs all 109 Vitest tests
 - `npm run build` — production build (Vite)
 - `npm run preview` — preview production build
 
@@ -173,8 +173,8 @@ The cycle repeats every 3 flips.
 
 ### Module-based Script
 
-- `index.html` contains no inline `<script>` block — all clock logic lives in `clock.js`
-- Entry point is `<script type="module">import { setupClock } from './clock.js'; setupClock();</script>` in the HTML
+- `index.html` contains zero JavaScript — it is purely declarative HTML
+- Entry point is `<script type="module" src="clock.js"></script>` — the module auto-initializes when a `.clock` element is present in the DOM
 - Vite handles ES module resolution and HMR — changes to `clock.js` or `style.css` trigger instant hot updates without full-page reload
 
 ### CSS File
@@ -258,7 +258,7 @@ The cycle repeats every 3 flips.
 ### Framework
 - Vitest (ES module `clock.js` tested as ES module)
 
-### Test suite structure (110 tests)
+### Test suite structure (109 tests)
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
@@ -266,11 +266,11 @@ The cycle repeats every 3 flips.
 | `getFormattedDate` | 5 | String format, specific dates, leading day padding, defaults |
 | `getNextDigit` | 10 | All digit transitions 0→1 through 9→0 |
 | `updateFlipUnit` | 24 | Pre-upper front update, upper front preservation, upper back update, `.flipping` class, three-class coexistence, dataset update, no-op for same value, early return during flip, 9→0 rollover, empty dataset, animationend class swaps (all three cards), face values after animationend (all six faces), second flip, independent units, pre-empting, 3-flip full cycle with face validity |
-| `initAudio` / `playFlipSound` | 9 | AudioContext creation, deduplication, webkit fallback, missing AudioContext, buffer/node creation (no oscillator), filter frequency verification (lowpass 1kHz, highpass 100Hz, bandpass 500Hz Q0.7), sound plays at animationend (not at flip start), no-throw guarantees |
+| `initAudio` / `playFlipSound` | 8 | AudioContext creation, deduplication, webkit fallback, missing AudioContext, buffer/node creation (no oscillator), filter frequency verification (lowpass 1kHz, highpass 100Hz, bandpass 500Hz Q0.7), sound plays at animationend (not at flip start), no-throw guarantees |
 | `initClock` | 6 | All faces set, no flip on init, class counts (one each of upper/pre-upper/lower), AM/PM, date, all 6 units |
 | `updateClock` | 5 | Time update, AM/PM update, flip trigger on change, no flip on same time, all digit positions |
 | `digit vertical alignment` | 18 | Per-breakpoint offset and center math (5 breakpoints × 2), symmetry across hinge, calc() equivalence, CSS rule audit, DOM integration, bounds sanity (offset < cardH, offset + fontSize > cardH, offset + fontSize > h/2 + 1), hinge gap < font-size at every breakpoint |
 | `getClockWidth` | 2 | Width computation from DOM elements, fallback to `window.innerWidth` when elements missing |
 | `adjustScale` | 8 | No-op when viewport wider than content, scaled inline widths applied when narrower, style clearing on resize from narrow to wide, digit font-size scaling, 50px-padding scale target verification (100px total margin), stability across repeated calls, graceful no-op when elements missing |
 | `setupClock` | 1 | Function existence (smoke test) |
-| **Total** | **110** | |
+| **Total** | **109** | |

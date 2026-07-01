@@ -757,11 +757,6 @@ describe('initAudio and playFlipSound', () => {
     expect(mockCtx.createOscillator).not.toHaveBeenCalled();
   });
 
-  it('does not throw when called without audio context', async () => {
-    const { initAudio, playFlipSound } = await import('./clock.js');
-    expect(() => playFlipSound()).not.toThrow();
-  });
-
   it('handles missing audio context gracefully in playFlipSound', async () => {
     const { playFlipSound } = await import('./clock.js');
     expect(() => playFlipSound()).not.toThrow();
