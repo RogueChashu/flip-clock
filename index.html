@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flip Clock</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+  <body>
+    <div class="container">
+      <div class="clock-wrapper">
+        <div class="date" id="date"></div>
+        <div class="clock">
+      <div class="hours">
+        <div class="flip-unit" data-value="">
+          <div class="card-flip upper">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+          <div class="card-flip pre-upper">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+          <div class="card-flip lower">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+        </div>
+        <div class="flip-unit" data-value="">
+          <div class="card-flip upper">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+          <div class="card-flip pre-upper">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+          <div class="card-flip lower">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="minutes">
+        <div class="flip-unit" data-value="">
+          <div class="card-flip upper">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+          <div class="card-flip pre-upper">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+          <div class="card-flip lower">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+        </div>
+        <div class="flip-unit" data-value="">
+          <div class="card-flip upper">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+          <div class="card-flip pre-upper">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+          <div class="card-flip lower">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="seconds">
+        <div class="flip-unit" data-value="">
+          <div class="card-flip upper">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+          <div class="card-flip pre-upper">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+          <div class="card-flip lower">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+        </div>
+        <div class="flip-unit" data-value="">
+          <div class="card-flip upper">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+          <div class="card-flip pre-upper">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+          <div class="card-flip lower">
+            <div class="card-flip-front"><div class="digit"></div></div>
+            <div class="card-flip-back"><div class="digit"></div></div>
+          </div>
+        </div>
+      </div>
+      <span class="ampm" id="ampm">AM</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { setupClock } from './clock.js';
+    setupClock();
+  </script>
+</body>
+</html>
