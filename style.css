@@ -17,13 +17,27 @@ body {
   user-select: none;
 }
 
+:root {
+  --unit-w: 180px;
+  --unit-h: 280px;
+  --digit-fs: 255px;
+  --clock-gap: 38px;
+  --group-gap: 5px;
+  --ampm-fs: 28px;
+  --ampm-ml: 0;
+  --ampm-ml-scale: 15px;
+  --date-fs: 32px;
+  --date-mb: 34px;
+  --card-radius: 6px;
+}
+
 .container {
   width: 100vw;
   height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 0 50px;
+  padding: 50px;
 }
 
 .clock-wrapper {
@@ -34,18 +48,18 @@ body {
 .clock {
   display: flex;
   align-items: center;
-  gap: 30px;
+  gap: var(--clock-gap);
 }
 
 .hours, .minutes, .seconds {
   display: flex;
-  gap: 5px;
+  gap: var(--group-gap);
 }
 
 .flip-unit {
   position: relative;
-  width: 180px;
-  height: 280px;
+  width: var(--unit-w);
+  height: var(--unit-h);
   perspective: 800px;
   transform-style: preserve-3d;
 }
@@ -54,25 +68,27 @@ body {
   position: absolute;
   left: 0;
   width: 100%;
+  transform: rotateX(0deg);
   transform-style: preserve-3d;
+  overflow: hidden;
   background: #151515;
-  border-radius: 6px;
+  border-radius: var(--card-radius);
 }
 
 .card-flip.upper {
   top: 0;
   height: calc(50% - 1px);
   z-index: 10;
-  transform: rotateX(0deg);
   transform-origin: bottom center;
-  overflow: hidden;
-  border-radius: 6px 6px 0 0;
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
 }
 
 .card-flip.upper .card-flip-front,
 .card-flip.upper .card-flip-back,
 .card-flip.pre-upper .card-flip-front,
-.card-flip.pre-upper .card-flip-back {
+.card-flip.pre-upper .card-flip-back,
+.card-flip.lower .card-flip-front,
+.card-flip.lower .card-flip-back {
   height: 100%;
   top: 0;
 }
@@ -81,26 +97,16 @@ body {
   top: 0;
   height: calc(50% - 1px);
   z-index: 3;
-  transform: rotateX(0deg);
   transform-origin: bottom center;
-  overflow: hidden;
-  border-radius: 6px 6px 0 0;
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
 }
 
 .card-flip.lower {
   top: calc(50% + 1px);
   height: calc(50% - 1px);
   z-index: 3;
-  transform: rotateX(0deg);
   transform-origin: top center;
-  overflow: hidden;
-  border-radius: 0 0 6px 6px;
-}
-
-.card-flip.lower .card-flip-front,
-.card-flip.lower .card-flip-back {
-  height: 100%;
-  top: 0;
+  border-radius: 0 0 var(--card-radius) var(--card-radius);
 }
 
 .card-flip.lower .card-flip-front .digit {
@@ -114,21 +120,14 @@ body {
   z-index: 10;
   transform-origin: bottom center;
   overflow: visible;
-  border-radius: 6px;
-  animation: flipDown 0.6s ease-in forwards;
-}
-
-.card-flip.flipping .card-flip-front,
-.card-flip.flipping .card-flip-back {
-  height: 100%;
-  top: 0;
+  animation: flipDown 0.9s cubic-bezier(0.65, 0, 0.8, 1) forwards;
 }
 
 .digit {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 255px;
+  font-size: var(--digit-fs);
   color: #ccc;
   line-height: 1;
   white-space: nowrap;
@@ -167,134 +166,28 @@ body {
     transform: rotateX(0deg);
   }
   100% {
-    transform: rotateX(-180deg);
+    transform: rotateX(-180deg) translateY(-2px);
   }
 }
 
 .ampm {
-  font-size: 28px;
+  font-size: var(--ampm-fs);
   color: #ccc;
-  margin-left: 15px;
+  margin-left: var(--ampm-ml);
   font-weight: 600;
   letter-spacing: 2px;
 }
 
 .date {
-  font-size: 28px;
+  font-size: var(--date-fs);
   color: #ccc;
   font-weight: 600;
   letter-spacing: 2px;
-  margin-bottom: 30px;
+  margin-bottom: var(--date-mb);
 }
 
-@media (max-width: 1200px) {
-  .flip-unit {
-    width: 140px;
-    height: 220px;
-  }
-  .digit {
-    font-size: 200px;
-  }
-  .date, .ampm {
-    font-size: 1.5rem;
-  }
-  .date {
-    margin-bottom: 24px;
-  }
-  .clock {
-    gap: 24px;
-  }
-  .hours, .minutes, .seconds {
-    gap: 4px;
-  }
-  .ampm {
-    margin-left: 12px;
-  }
-}
-
-@media (max-width: 900px) {
-  .flip-unit {
-    width: 100px;
-    height: 160px;
-  }
-  .digit {
-    font-size: 145px;
-  }
-  .date, .ampm {
-    font-size: 18px;
-  }
-  .date {
-    margin-bottom: 18px;
-  }
-  .clock {
-    gap: 18px;
-  }
-  .hours, .minutes, .seconds {
-    gap: 3px;
-  }
-  .ampm {
-    margin-left: 10px;
-  }
-  .card-flip.upper, .card-flip.pre-upper, .card-flip.lower {
-    border-radius: 4px 4px 0 0;
-  }
-  .card-flip.lower {
-    border-radius: 0 0 4px 4px;
-  }
-}
-
-@media (max-width: 600px) {
-  .flip-unit {
-    width: 70px;
-    height: 110px;
-  }
-  .digit {
-    font-size: 100px;
-  }
-  .date, .ampm {
-    font-size: 14px;
-  }
-  .date {
-    margin-bottom: 12px;
-  }
-  .clock {
-    gap: 12px;
-  }
-  .hours, .minutes, .seconds {
-    gap: 2px;
-  }
-  .ampm {
-    margin-left: 8px;
-  }
-  .card-flip.upper, .card-flip.pre-upper, .card-flip.lower {
-    border-radius: 3px 3px 0 0;
-  }
-  .card-flip.lower {
-    border-radius: 0 0 3px 3px;
-  }
-}
-
-@media (max-width: 400px) {
-  .flip-unit {
-    width: 55px;
-    height: 88px;
-  }
-  .digit {
-    font-size: 80px;
-  }
-  .date, .ampm {
-    font-size: 12px;
-  }
-  .date {
-    margin-bottom: 10px;
-  }
-  .clock {
-    gap: 8px;
-  }
-  .hours, .minutes, .seconds {
-    gap: 2px;
-  }
-  .ampm {
-    margin-left: 6px;
+@media (prefers-reduced-motion: reduce) {
+  .card-flip.flipping {
+    animation: none;
   }
 }

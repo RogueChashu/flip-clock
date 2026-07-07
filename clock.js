@@ -1,22 +1,64 @@
-let audioCtx = null;
-let audioInitialized = false;
+const CONTAINER_PADDING = 100;
+const MIN_SCALE = 0.35;
+
+const AUDIO = {
+  HIGHPASS_FREQ: 100,
+  BANDPASS_FREQ: 500,
+  BANDPASS_Q: 0.7,
+  LOWPASS_FREQ: 1000,
+  GAIN_PEAK: 0.08,
+  GAIN_ATTACK_S: 0.005,
+  GAIN_RELEASE_S: 0.06,
+  NOISE_DURATION_S: 0.07,
+};
+
+const state = {
+  audioCtx: null,
+  audioInitialized: false,
+  fxChain: null,
+  tickInterval: null,
+  resizeHandler: null,
+  resizeRafId: null,
+  visibilityHandler: null,
+  noiseBuffer: null,
+  wrapper: null,
+};
+
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+let _defaults = null;
+let _cardCache = new WeakMap();
+
+function _getCardRefs(unit) {
+  let refs = _cardCache.get(unit);
+  if (!refs) {
+    const allCards = [...unit.querySelectorAll('.card-flip')];
+    refs = { allCards };
+    _cardCache.set(unit, refs);
+  }
+  return {
+    upper: refs.allCards.find(c => c.classList.contains('upper')),
+    preUpper: refs.allCards.find(c => c.classList.contains('pre-upper')),
+    lower: refs.allCards.find(c => c.classList.contains('lower')),
+  };
+}
 
 export function getNextDigit(current) {
   return (current + 1) % 10;
 }
 
 export function getFormattedTime(now = new Date()) {
-  let hours = now.getHours();
+  const hours = now.getHours();
   const minutes = now.getMinutes();
   const seconds = now.getSeconds();
   const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12;
+  const displayHours = hours % 12 || 12;
 
   return {
     digits: [
-      Math.floor(hours / 10),
-      hours % 10,
+      Math.floor(displayHours / 10),
+      displayHours % 10,
       Math.floor(minutes / 10),
       minutes % 10,
       Math.floor(seconds / 10),
@@ -27,98 +69,101 @@ export function getFormattedTime(now = new Date()) {
 }
 
 export function getFormattedDate(now = new Date()) {
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  return `${DAYS[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
 }
 
 export function initAudio() {
-  if (audioInitialized) return;
+  if (state.audioInitialized) return;
   const AudioCtor = window.AudioContext || window.webkitAudioContext;
   if (AudioCtor) {
-    audioCtx = new AudioCtor();
-    audioInitialized = true;
+    state.audioCtx = new AudioCtor();
+
+    const highpass = state.audioCtx.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = AUDIO.HIGHPASS_FREQ;
+    const bandpass = state.audioCtx.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.value = AUDIO.BANDPASS_FREQ;
+    bandpass.Q.value = AUDIO.BANDPASS_Q;
+    const lowpass = state.audioCtx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = AUDIO.LOWPASS_FREQ;
+    const gain = state.audioCtx.createGain();
+
+    highpass.connect(bandpass);
+    bandpass.connect(lowpass);
+    lowpass.connect(gain);
+    gain.connect(state.audioCtx.destination);
+
+    const bufferSize = state.audioCtx.sampleRate * AUDIO.NOISE_DURATION_S;
+    const noiseBuffer = state.audioCtx.createBuffer(1, bufferSize, state.audioCtx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+    state.noiseBuffer = noiseBuffer;
+
+    state.fxChain = { highpass, bandpass, lowpass, gain };
+    state.audioInitialized = true;
   }
 }
 
 export function playFlipSound() {
-  if (!audioCtx) return;
-  const now = audioCtx.currentTime;
-  const bufferSize = audioCtx.sampleRate * 0.1;
-  const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-  const output = noiseBuffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) {
-    output[i] = Math.random() * 2 - 1;
-  }
-  const noise = audioCtx.createBufferSource();
-  noise.buffer = noiseBuffer;
-  const lowpass = audioCtx.createBiquadFilter();
-  lowpass.type = 'lowpass';
-  lowpass.frequency.value = 1000;
-  const highpass = audioCtx.createBiquadFilter();
-  highpass.type = 'highpass';
-  highpass.frequency.value = 100;
-  const bandpass = audioCtx.createBiquadFilter();
-  bandpass.type = 'bandpass';
-  bandpass.frequency.value = 500;
-  bandpass.Q.value = 0.7;
-  const gain = audioCtx.createGain();
-  gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.08, now + 0.005);
-  gain.gain.exponentialRampToValueAtTime(0.01, now + 0.06);
-  noise.connect(highpass);
-  highpass.connect(bandpass);
-  bandpass.connect(lowpass);
-  lowpass.connect(gain);
-  gain.connect(audioCtx.destination);
+  if (!state.audioCtx || !state.fxChain || !state.noiseBuffer) return;
+  const now = state.audioCtx.currentTime;
+  const noise = state.audioCtx.createBufferSource();
+  noise.buffer = state.noiseBuffer;
+  state.fxChain.gain.gain.setValueAtTime(0, now);
+  state.fxChain.gain.gain.linearRampToValueAtTime(AUDIO.GAIN_PEAK, now + AUDIO.GAIN_ATTACK_S);
+  state.fxChain.gain.gain.exponentialRampToValueAtTime(0.01, now + AUDIO.GAIN_RELEASE_S);
+  noise.connect(state.fxChain.highpass);
   noise.start(now);
-  noise.stop(now + 0.07);
+  noise.stop(now + AUDIO.NOISE_DURATION_S);
 }
 
-export function updateFlipUnit(flipUnit, oldValue, newValue) {
+export function updateFlipUnit(flipUnit, newValue) {
   const currentValue = flipUnit.dataset.value;
   if (currentValue === String(newValue)) return;
-  if (flipUnit.querySelector('.card-flip.flipping')) return;
+  if (flipUnit.dataset.flipping) return;
 
-  const upperCard = flipUnit.querySelector('.card-flip.upper');
-  const preUpperCard = flipUnit.querySelector('.card-flip.pre-upper');
-  const lowerCard = flipUnit.querySelector('.card-flip.lower');
+  const { upper, preUpper, lower } = _getCardRefs(flipUnit);
+  if (!upper || !preUpper || !lower) return;
 
-  upperCard.querySelector('.card-flip-back .digit').textContent = newValue;
-  preUpperCard.querySelector('.card-flip-front .digit').textContent = newValue;
+  upper.querySelector('.card-flip-back .digit').textContent = newValue;
+  preUpper.querySelector('.card-flip-front .digit').textContent = newValue;
 
-  upperCard.classList.add('flipping');
+  flipUnit.dataset.flipping = 'true';
+  upper.classList.add('flipping');
 
-  function onAnimationEnd() {
-    upperCard.removeEventListener('animationend', onAnimationEnd);
-
+  upper.addEventListener('animationend', function onEnd() {
     playFlipSound();
 
-    upperCard.querySelector('.card-flip-front .digit').textContent = newValue;
-    upperCard.classList.remove('flipping', 'upper');
-    upperCard.classList.add('lower');
+    upper.querySelector('.card-flip-front .digit').textContent = newValue;
+    upper.classList.remove('flipping', 'upper');
+    upper.classList.add('lower');
 
-    preUpperCard.querySelector('.card-flip-back .digit').textContent = newValue;
-    preUpperCard.classList.remove('pre-upper');
-    preUpperCard.classList.add('upper');
+    preUpper.querySelector('.card-flip-back .digit').textContent = newValue;
+    preUpper.classList.remove('pre-upper');
+    preUpper.classList.add('upper');
 
-    lowerCard.querySelector('.card-flip-front .digit').textContent = newValue;
-    lowerCard.classList.remove('lower');
-    lowerCard.classList.add('pre-upper');
-  }
+    lower.querySelector('.card-flip-front .digit').textContent = newValue;
+    lower.classList.remove('lower');
+    lower.classList.add('pre-upper');
 
-  upperCard.addEventListener('animationend', onAnimationEnd);
+    delete flipUnit.dataset.flipping;
+  }, { once: true });
 
   flipUnit.dataset.value = String(newValue);
 }
 
 export function initClock(flipUnits, ampmEl, dateEl) {
-  const time = getFormattedTime();
+  const now = new Date();
+  const time = getFormattedTime(now);
 
   flipUnits.forEach((unit, index) => {
     const digit = time.digits[index];
-    const cards = unit.querySelectorAll('.card-flip');
-    cards.forEach(card => {
+    const { upper, preUpper, lower } = _getCardRefs(unit);
+    [upper, preUpper, lower].forEach(card => {
       card.querySelector('.card-flip-front .digit').textContent = digit;
       card.querySelector('.card-flip-back .digit').textContent = digit;
     });
@@ -126,44 +171,30 @@ export function initClock(flipUnits, ampmEl, dateEl) {
   });
 
   ampmEl.textContent = time.ampm;
-  dateEl.textContent = getFormattedDate();
+  dateEl.textContent = getFormattedDate(now);
 }
 
-export function updateClock(flipUnits, ampmEl) {
-  const time = getFormattedTime();
+export function updateClock(flipUnits, ampmEl, dateEl) {
+  if (!flipUnits || !flipUnits.length || !ampmEl || !dateEl) return;
+  const now = new Date();
+  const time = getFormattedTime(now);
 
   flipUnits.forEach((unit, index) => {
-    const oldValue = unit.dataset.value;
     const newValue = time.digits[index];
-    updateFlipUnit(unit, oldValue, newValue);
+    updateFlipUnit(unit, newValue);
   });
 
-  ampmEl.textContent = time.ampm;
+  if (ampmEl.textContent !== time.ampm) ampmEl.textContent = time.ampm;
+  const dateStr = getFormattedDate(now);
+  if (dateEl.textContent !== dateStr) dateEl.textContent = dateStr;
 }
 
-function clearAllInlineSizeStyles() {
-  document.querySelectorAll('.flip-unit').forEach(el => {
-    el.style.width = '';
-    el.style.height = '';
-  });
-  const clock = document.querySelector('.clock');
-  if (clock) clock.style.gap = '';
-  document.querySelectorAll('.hours, .minutes, .seconds').forEach(el => {
-    el.style.gap = '';
-  });
-  document.querySelectorAll('.digit').forEach(el => {
-    el.style.fontSize = '';
-  });
-  const ampm = document.getElementById('ampm');
-  if (ampm) {
-    ampm.style.fontSize = '';
-    ampm.style.marginLeft = '';
-  }
-  const date = document.getElementById('date');
-  if (date) {
-    date.style.fontSize = '';
-    date.style.marginBottom = '';
-  }
+function naturalClockWidth(unitW, gapW, gapB, ampmW, ampmM) {
+  return 3 * (2 * unitW + gapW) + 2 * gapB + ampmW + ampmM;
+}
+
+function naturalClockHeight(unitH, dateFS, dateMB) {
+  return unitH + dateFS + dateMB;
 }
 
 export function getClockWidth() {
@@ -176,75 +207,153 @@ export function getClockWidth() {
   const unitW = parseFloat(getComputedStyle(unit).width) || 0;
   const gapW = parseFloat(getComputedStyle(group).gap) || 0;
   const gapB = parseFloat(getComputedStyle(clock).gap) || 0;
-  const groupW = 2 * unitW + gapW;
   const ampmW = parseFloat(getComputedStyle(ampm).width) || 0;
-  const ampmMargin = parseFloat(getComputedStyle(ampm).marginLeft) || 0;
-  return 3 * groupW + 2 * gapB + ampmW + ampmMargin;
+  const ampmM = parseFloat(getComputedStyle(ampm).marginLeft) || 0;
+  return naturalClockWidth(unitW, gapW, gapB, ampmW, ampmM);
 }
 
-export function adjustScale() {
-  clearAllInlineSizeStyles();
+export function getClockHeight() {
+  const unit = document.querySelector('.flip-unit');
+  if (!unit) return window.innerHeight;
 
+  const unitH = parseFloat(getComputedStyle(unit).height) || 0;
+  const date = document.getElementById('date');
+  if (!date) return unitH;
+
+  const dateFS = parseFloat(getComputedStyle(date).fontSize) || 0;
+  const dateMB = parseFloat(getComputedStyle(date).marginBottom) || 0;
+  return naturalClockHeight(unitH, dateFS, dateMB);
+}
+
+function readDefaults() {
   const unit = document.querySelector('.flip-unit');
   const clock = document.querySelector('.clock');
   const group = document.querySelector('.hours');
   const ampm = document.getElementById('ampm');
-  if (!unit || !clock || !group || !ampm) return;
+  if (!unit || !clock || !group || !ampm) return null;
 
-  const unitW = parseFloat(getComputedStyle(unit).width) || 0;
-  const gapW = parseFloat(getComputedStyle(group).gap) || 0;
-  const gapB = parseFloat(getComputedStyle(clock).gap) || 0;
-  const groupW = 2 * unitW + gapW;
-  const ampmW = parseFloat(getComputedStyle(ampm).width) || 0;
-  const ampmM = parseFloat(getComputedStyle(ampm).marginLeft) || 0;
-  const naturalW = 3 * groupW + 2 * gapB + ampmW + ampmM;
+  const rootStyle = getComputedStyle(document.documentElement);
 
-  const scale = (window.innerWidth - 100) / naturalW;
-  if (scale >= 1) return;
+  return {
+    _unit: unit,
+    _unitW: parseFloat(rootStyle.getPropertyValue('--unit-w')) || 0,
+    unitW: parseFloat(getComputedStyle(unit).width) || 0,
+    unitH: parseFloat(getComputedStyle(unit).height) || 0,
+    gapW: parseFloat(getComputedStyle(group).gap) || 0,
+    gapB: parseFloat(getComputedStyle(clock).gap) || 0,
+    ampmW: parseFloat(getComputedStyle(ampm).width) || 0,
+    ampmMS: parseFloat(rootStyle.getPropertyValue('--ampm-ml-scale')) || 0,
+  };
+}
 
-  const digitEl = unit.querySelector('.digit');
-  const unitH = parseFloat(getComputedStyle(unit).height) || 0;
-  const digitFS = digitEl ? parseFloat(getComputedStyle(digitEl).fontSize) || 0 : 0;
-  const ampmFS = parseFloat(getComputedStyle(ampm).fontSize) || 0;
-  const date = document.getElementById('date');
-
-  document.querySelectorAll('.flip-unit').forEach(el => {
-    el.style.width = (unitW * scale) + 'px';
-    el.style.height = (unitH * scale) + 'px';
-  });
-  clock.style.gap = (gapB * scale) + 'px';
-  document.querySelectorAll('.hours, .minutes, .seconds').forEach(el => {
-    el.style.gap = (gapW * scale) + 'px';
-  });
-  if (digitFS) {
-    document.querySelectorAll('.digit').forEach(el => {
-      el.style.fontSize = (digitFS * scale) + 'px';
-    });
+function getDefaults() {
+  if (!_defaults) {
+    _defaults = readDefaults();
+    return _defaults;
   }
-  ampm.style.fontSize = (ampmFS * scale) + 'px';
-  ampm.style.marginLeft = (ampmM * scale) + 'px';
-  if (date) {
-    const dateFS = parseFloat(getComputedStyle(date).fontSize) || 0;
-    const dateMB = parseFloat(getComputedStyle(date).marginBottom) || 0;
-    date.style.fontSize = (dateFS * scale) + 'px';
-    date.style.marginBottom = (dateMB * scale) + 'px';
+  const unit = document.querySelector('.flip-unit');
+  if (!unit || unit !== _defaults._unit) {
+    _defaults = readDefaults();
+    return _defaults;
   }
+  const rootStyle = getComputedStyle(document.documentElement);
+  const curUnitW = parseFloat(rootStyle.getPropertyValue('--unit-w')) || 0;
+  if (curUnitW !== _defaults._unitW) {
+    _defaults = readDefaults();
+  }
+  return _defaults;
+}
+
+export function adjustScale() {
+  const wrapper = state.wrapper || document.querySelector('.clock-wrapper');
+  if (!wrapper) return;
+
+  const defs = getDefaults();
+  if (!defs) return;
+
+  const naturalW = naturalClockWidth(defs.unitW, defs.gapW, defs.gapB, defs.ampmW, defs.ampmMS);
+  const scale = Math.max((window.innerWidth - CONTAINER_PADDING) / naturalW, MIN_SCALE);
+
+  if (scale >= 1) {
+    wrapper.style.transform = '';
+    return;
+  }
+
+  wrapper.style.transform = 'scale(' + scale + ')';
+}
+
+export function resetClockState() {
+  if (state.tickInterval) clearInterval(state.tickInterval);
+  if (state.resizeHandler) window.removeEventListener('resize', state.resizeHandler);
+  if (state.resizeRafId) cancelAnimationFrame(state.resizeRafId);
+  if (state.visibilityHandler) document.removeEventListener('visibilitychange', state.visibilityHandler);
+  _defaults = null;
+  _cardCache = new WeakMap();
+  state.audioCtx = null;
+  state.audioInitialized = false;
+  state.fxChain = null;
+  state.noiseBuffer = null;
+  state.wrapper = null;
+  state.tickInterval = null;
+  state.resizeHandler = null;
+  state.resizeRafId = null;
+  state.visibilityHandler = null;
 }
 
 export function setupClock() {
+  if (state.tickInterval) clearInterval(state.tickInterval);
+  if (state.resizeHandler) window.removeEventListener('resize', state.resizeHandler);
+  if (state.resizeRafId) cancelAnimationFrame(state.resizeRafId);
+  if (state.visibilityHandler) document.removeEventListener('visibilitychange', state.visibilityHandler);
+
+  const tpl = document.getElementById('flip-unit-tpl');
+  if (tpl) {
+    ['.hours', '.minutes', '.seconds'].forEach(sel => {
+      const group = document.querySelector(sel);
+      if (!group) return;
+      for (let i = 0; i < 2; i++) {
+        group.appendChild(tpl.content.cloneNode(true));
+      }
+    });
+  }
+
   const flipUnits = document.querySelectorAll('.flip-unit');
   const ampmEl = document.getElementById('ampm');
   const dateEl = document.getElementById('date');
 
+  state.wrapper = document.querySelector('.clock-wrapper');
+
+  document.removeEventListener('click', initAudio);
+  document.removeEventListener('keydown', initAudio);
   document.addEventListener('click', initAudio);
   document.addEventListener('keydown', initAudio);
 
   initClock(flipUnits, ampmEl, dateEl);
   adjustScale();
-  window.addEventListener('resize', adjustScale);
-  setInterval(() => updateClock(flipUnits, ampmEl), 1000);
+
+  state.visibilityHandler = () => {
+    if (document.visibilityState === 'hidden') {
+      clearInterval(state.tickInterval);
+      state.tickInterval = null;
+    } else if (document.visibilityState === 'visible' && !state.tickInterval) {
+      updateClock(flipUnits, ampmEl, dateEl);
+      state.tickInterval = setInterval(() => updateClock(flipUnits, ampmEl, dateEl), 1000);
+    }
+  };
+  document.addEventListener('visibilitychange', state.visibilityHandler);
+
+  state.resizeHandler = () => {
+    if (state.resizeRafId) cancelAnimationFrame(state.resizeRafId);
+    state.resizeRafId = requestAnimationFrame(adjustScale);
+  };
+  window.addEventListener('resize', state.resizeHandler);
+  state.tickInterval = setInterval(() => updateClock(flipUnits, ampmEl, dateEl), 1000);
 }
 
 if (document.querySelector('.clock')) {
-  setupClock();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupClock);
+  } else {
+    setupClock();
+  }
 }
