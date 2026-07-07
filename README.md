@@ -18,7 +18,7 @@ Open http://localhost:5173. Click anywhere on the page to enable audio.
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Start dev server with HMR |
-| `npm test` | Run 134 Vitest tests |
+| `npm test` | Run 138 Vitest tests |
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Preview production build |
 
@@ -26,12 +26,14 @@ Open http://localhost:5173. Click anywhere on the page to enable audio.
 
 ```
 ├── clock.js          # Clock logic (ES module)
-├── clock.test.js     # 134 tests
+├── clock.test.js     # 138 tests
 ├── index.html        # Entry HTML
 ├── style.css         # All styles (single-size custom properties)
+├── AGENTS.md         # Context for LLM-assisted development
 ├── favicon.svg       # Dark clock icon
 ├── vite.config.js    # Vite config
-└── vitest.config.js  # Vitest config (jsdom)
+├── vitest.config.js  # Vitest config (jsdom)
+└── SPEC.md           # Full specification
 ```
 
 ## How It Works
